@@ -13,7 +13,7 @@
             --warning: #Ef4444;
             --bg: #f0f2f5;
             --white: #ffffff;
-            --light-blue: #3498db; /* අලුත් වර්ණය */
+            --light-blue: #3498db;
         }
 
         body { 
@@ -26,7 +26,6 @@
             margin: 0;
         }
 
-        /* Tab Styles */
         .tabs {
             display: flex;
             gap: 10px;
@@ -67,18 +66,15 @@
 
         h2, h3 { text-align: center; color: var(--primary); margin-bottom: 20px; }
         
-        /* අලුතින් එක් කළ විශේෂ Class එක */
         .calc-title {
             color: var(--light-blue) !important;
         }
 
-        /* Shared Styles */
         label { font-size: 14px; font-weight: 600; color: #636e72; display: block; margin-bottom: 8px; }
         select, input, button { width: 100%; padding: 12px; border-radius: 12px; border: 1.5px solid #eee; box-sizing: border-box; font-size: 14px; }
         button { cursor: pointer; font-weight: bold; transition: 0.3s; border: none; }
         button:hover { opacity: 0.9; transform: translateY(-1px); }
 
-        /* Time Tracker Specific */
         .timer-display { 
             background: #fff; color: var(--primary); font-size: 3.5rem; text-align: center; 
             border-radius: 25px; padding: 30px 10px; margin: 20px 0; font-weight: 700;
@@ -95,7 +91,6 @@
             display: flex; justify-content: space-between;
         }
 
-        /* Calculator Specific */
         .section-title { font-weight: bold; color: var(--secondary); text-align: left; margin: 15px 0 10px 0; }
         .time-row { display: flex; gap: 10px; margin-bottom: 10px; }
         .shift-list { background: #eef4ff; padding: 10px; border-radius: 8px; margin-bottom: 15px; max-height: 120px; overflow-y: auto; text-align: left; border-left: 4px solid var(--secondary); font-size: 13px; }
@@ -109,8 +104,8 @@
 <body>
 
     <div class="tabs">
-        <button class="tab-btn active" onclick="openTab('tracker')">Worksheet Time Tracker</button>
-        <button class="tab-btn" onclick="openTab('calculator')">Worksheet Calculator</button>
+        <button class="tab-btn active" id="tab-tracker" onclick="openTab('tracker')">Worksheet Time Tracker</button>
+        <button class="tab-btn" id="tab-calculator" onclick="openTab('calculator')">Worksheet Calculator</button>
     </div>
 
     <div id="tracker" class="container active">
@@ -145,6 +140,279 @@
             <button style="margin-top: 15px; background: #636e72; color: white;" onclick="finalizeAndExit()">සැසිය අවසන් කරන්න 🏁</button>
         </div>
 
+        <div id="logs" style="margin-top: 25px;">
+            <div id="sessionHeader" style="font-weight: bold; margin-bottom: 10px; color: #b2bec3; display:none; text-align: center; font-size: 12px;">අවසන් කළ පාඩම් සාරාංශය</div>
+        </div>
+    </div>
+
+    <div id="calculator" class="container">
+        <h2 class="calc-title">⏱️ Time Calculater</h2>
+        <div class="section-title">ප්‍රමිතිගත කාල පරාසයන් (Shifts)</div>
+        <div class="time-row">
+            <div><label>ආරම්භය:</label><input type="time" id="shiftStart"></div>
+            <div><label>අවසානය:</label><input type="time" id="shiftEnd"></div>
+        </div>
+        <button style="background: var(--secondary); color: white; margin-bottom: 15px;" onclick="addShift()">ඇතුළත් කරන්න</button>
+        <div id="shiftDisplay" class="shift-list">ඇතුළත් කළ කාල පරාසයන් මෙහි පෙන්වයි...</div>
+
+        <hr>
+        <div style="text-align: left;">
+            <label>Business Studies (විනාඩි):</label>
+            <input type="number" id="bsInput" placeholder="0" style="margin-bottom: 10px;">
+            <label>Accounting (විනාඩි):</label>
+            <input type="number" id="accInput" placeholder="0" style="margin-bottom: 10px;">
+            <label>ICT / Econ (විනාඩි):</label>
+            <input type="number" id="ictInput" placeholder="0" style="margin-bottom: 15px;">
+        </div>
+
+        <button style="background: var(--secondary); color: white;" onclick="calculateAll()">ගණනය කරන්න</button>
+        <button style="background: var(--warning); color: white; margin-top: 8px;" onclick="resetCalc()">Reset</button>
+
+        <div id="results-area" style="margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 10px;">
+            <div class="result-item"><span>BS එකතුව:</span> <span id="resBS" style="font-weight:bold;">පැය 0 විනාඩි 0</span></div>
+            <div class="result-item"><span>Acc එකතුව:</span> <span id="resAcc" style="font-weight:bold;">පැය 0 විනාඩි 0</span></div>
+            <div class="result-item"><span>ICT එකතුව:</span> <span id="resICT" style="font-weight:bold;">පැය 0 විනාඩි 0</span></div>
+            <hr>
+            <div class="result-item"><span class="label-badge blue-bg">මුළු ප්‍රමිතිගත කාලය</span> <span id="totalStd" style="font-weight:bold;">0</span></div>
+            <div class="result-item"><span class="label-badge blue-bg">මුළු සත්‍ය කාලය</span> <span id="totalAct" style="font-weight:bold;">0</span></div>
+            <div class="result-item"><span class="label-badge green-bg">මුළු අක්‍රිය කාලය</span> <span id="idleRes" style="font-weight:bold;">0</span></div>
+        </div>
+    </div>
+
+<script>
+    // --- APP STATE & LOCAL STORAGE ---
+    let timerInt, startTime, isRunning = false;
+    let elapsed = parseInt(localStorage.getItem('elapsed')) || 0;
+    let totalForCurrentUnit = parseInt(localStorage.getItem('totalForCurrentUnit')) || 0;
+    let lastTrack = localStorage.getItem('lastTrack') || "";
+    let isSessionActive = localStorage.getItem('isSessionActive') === 'true';
+
+    // --- INITIALIZATION ---
+    window.onload = function() {
+        const yr = document.getElementById('year');
+        const ut = document.getElementById('unit');
+        for(let i=2024; i>=2010; i--) yr.innerHTML += `<option>${i}</option>`;
+        for(let i=1; i<=15; i++) ut.innerHTML += `<option value="${i}">Unit ${i}</option>`;
+
+        // Restore Session State
+        if (isSessionActive) {
+            document.getElementById('sessionConfig').style.display = 'none';
+            document.getElementById('studyControls').style.display = 'block';
+            document.getElementById('currentSessionLabel').textContent = localStorage.getItem('sessionLabel');
+            document.getElementById('timer').textContent = formatTimeTracker(elapsed);
+        }
+
+        // Restore Tracker Values
+        if(localStorage.getItem('subject')) document.getElementById('subject').value = localStorage.getItem('subject');
+        if(localStorage.getItem('year')) document.getElementById('year').value = localStorage.getItem('year');
+        if(localStorage.getItem('unit')) document.getElementById('unit').value = localStorage.getItem('unit');
+        
+        loadLogs();
+    };
+
+    function openTab(tabName) {
+        document.querySelectorAll('.container').forEach(c => c.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById(tabName).classList.add('active');
+        document.getElementById('tab-' + tabName).classList.add('active');
+    }
+
+    // --- TRACKER LOGIC ---
+    function setSession() {
+        isSessionActive = true;
+        let label = document.getElementById('sStart').value + " - " + document.getElementById('sEnd').value;
+        localStorage.setItem('isSessionActive', 'true');
+        localStorage.setItem('sessionLabel', label);
+        
+        document.getElementById('sessionConfig').style.display = 'none';
+        document.getElementById('studyControls').style.display = 'block';
+        document.getElementById('currentSessionLabel').textContent = label;
+        updateLastTrack();
+    }
+
+    function updateLastTrack() { 
+        lastTrack = `${document.getElementById('subject').value} | ${document.getElementById('year').value} | Unit ${document.getElementById('unit').value}`;
+        localStorage.setItem('lastTrack', lastTrack);
+        localStorage.setItem('subject', document.getElementById('subject').value);
+        localStorage.setItem('year', document.getElementById('year').value);
+        localStorage.setItem('unit', document.getElementById('unit').value);
+    }
+    
+    function checkTrackChange() {
+        const currentTrack = `${document.getElementById('subject').value} | ${document.getElementById('year').value} | Unit ${document.getElementById('unit').value}`;
+        if (currentTrack !== lastTrack && totalForCurrentUnit > 0) {
+            addSummaryToLog(lastTrack, totalForCurrentUnit);
+            totalForCurrentUnit = 0;
+            localStorage.setItem('totalForCurrentUnit', '0');
+        }
+        updateLastTrack();
+    }
+
+    function startTimer() {
+        startTime = Date.now() - elapsed;
+        timerInt = setInterval(() => {
+            elapsed = Date.now() - startTime;
+            document.getElementById('timer').textContent = formatTimeTracker(elapsed);
+            localStorage.setItem('elapsed', elapsed); // Save every second
+        }, 1000);
+        isRunning = true;
+        document.getElementById('startBtn').style.display = 'none';
+        document.getElementById('stopBtn').style.display = 'block';
+    }
+
+    function stopTimer() {
+        clearInterval(timerInt);
+        totalForCurrentUnit += elapsed;
+        elapsed = 0;
+        localStorage.setItem('elapsed', '0');
+        localStorage.setItem('totalForCurrentUnit', totalForCurrentUnit);
+        
+        document.getElementById('timer').textContent = "00:00:00";
+        isRunning = false;
+        document.getElementById('startBtn').style.display = 'block';
+        document.getElementById('stopBtn').style.display = 'none';
+    }
+
+    function resetCurrentTimer() {
+        if(confirm("කාලය මකන්නද?")) {
+            clearInterval(timerInt);
+            elapsed = 0; totalForCurrentUnit = 0;
+            localStorage.setItem('elapsed', '0');
+            localStorage.setItem('totalForCurrentUnit', '0');
+            document.getElementById('timer').textContent = "00:00:00";
+            isRunning = false;
+            document.getElementById('startBtn').style.display = 'block';
+            document.getElementById('stopBtn').style.display = 'none';
+        }
+    }
+
+    function addSummaryToLog(trackName, timeMs) {
+        let logs = JSON.parse(localStorage.getItem('studyLogs') || "[]");
+        logs.push({ track: trackName, time: timeMs });
+        localStorage.setItem('studyLogs', JSON.stringify(logs));
+        renderLogs();
+    }
+
+    function renderLogs() {
+        let logs = JSON.parse(localStorage.getItem('studyLogs') || "[]");
+        const logArea = document.getElementById('logs');
+        logArea.innerHTML = '<div id="sessionHeader" style="font-weight: bold; margin-bottom: 10px; color: #b2bec3; text-align: center; font-size: 12px;">අවසන් කළ පාඩම් සාරාංශය</div>';
+        
+        if(logs.length > 0) {
+            document.getElementById('sessionHeader').style.display = 'block';
+            logs.forEach(log => {
+                const item = document.createElement('div');
+                item.className = 'log-item';
+                item.innerHTML = `<div style="font-weight:600">${log.track}</div><div style="color:var(--primary); font-weight:bold">${formatTimeTracker(log.time)}</div>`;
+                logArea.appendChild(item);
+            });
+        }
+    }
+
+    function loadLogs() { renderLogs(); }
+
+    function finalizeAndExit() {
+        if(isRunning) stopTimer();
+        else { 
+            totalForCurrentUnit += elapsed; 
+            elapsed = 0; 
+            localStorage.setItem('elapsed', '0');
+        }
+        
+        if (totalForCurrentUnit > 0) addSummaryToLog(lastTrack, totalForCurrentUnit);
+        
+        // Clear all session data
+        localStorage.removeItem('isSessionActive');
+        localStorage.removeItem('sessionLabel');
+        localStorage.removeItem('totalForCurrentUnit');
+        localStorage.removeItem('studyLogs');
+        isSessionActive = false;
+        totalForCurrentUnit = 0;
+
+        document.getElementById('studyControls').style.display = 'none';
+        // කලින් තිබූ finalizeAndExit function එකේ ඉතිරි කොටස සහ Calculator logic
+        
+        document.getElementById('sessionConfig').style.display = 'block';
+        document.getElementById('logs').innerHTML = ''; // පැරණි Logs මකා දමන්න
+        alert("සැසිය සාර්ථකව අවසන් කළා! නියමයි.");
+    }
+
+    function formatTimeTracker(ms) {
+        let hours = Math.floor(ms / 3600000);
+        let minutes = Math.floor((ms % 3600000) / 60000);
+        let seconds = Math.floor((ms % 60000) / 1000);
+        return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    }
+
+    // --- CALCULATOR LOGIC ---
+    let shifts = [];
+
+    function addShift() {
+        const start = document.getElementById('shiftStart').value;
+        const end = document.getElementById('shiftEnd').value;
+
+        if (!start || !end) {
+            alert("කරුණාකර වේලාවන් ඇතුළත් කරන්න.");
+            return;
+        }
+
+        const sTime = new Date(`2026-01-01T${start}`);
+        const eTime = new Date(`2026-01-01T${end}`);
+        const diff = (eTime - sTime) / (1000 * 60); // විනාඩි වලින්
+
+        if (diff <= 0) {
+            alert("අවසාන වේලාව ආරම්භක වේලාවට වඩා වැඩි විය යුතුය.");
+            return;
+        }
+
+        shifts.push({ start, end, duration: diff });
+        updateShiftDisplay();
+    }
+
+    function updateShiftDisplay() {
+        const display = document.getElementById('shiftDisplay');
+        display.innerHTML = shifts.map((s, i) => `<div>${i + 1}. ${s.start} - ${s.end} (${s.duration} min)</div>`).join('');
+    }
+
+    function calculateAll() {
+        const bs = parseInt(document.getElementById('bsInput').value) || 0;
+        const acc = parseInt(document.getElementById('accInput').value) || 0;
+        const ict = parseInt(document.getElementById('ictInput').value) || 0;
+
+        // විෂයන් වල එකතුව (සත්‍ය කාලය)
+        const totalActualMinutes = bs + acc + ict;
+
+        // ෂිෆ්ට් වල එකතුව (ප්‍රමිතිගත කාලය)
+        const totalStandardMinutes = shifts.reduce((sum, s) => sum + s.duration, 0);
+
+        const idleTime = totalStandardMinutes - totalActualMinutes;
+
+        // Results පෙන්වීම
+        document.getElementById('resBS').textContent = `පැය ${Math.floor(bs / 60)} විනාඩි ${bs % 60}`;
+        document.getElementById('resAcc').textContent = `පැය ${Math.floor(acc / 60)} විනාඩි ${acc % 60}`;
+        document.getElementById('resICT').textContent = `පැය ${Math.floor(ict / 60)} විනාඩි ${ict % 60}`;
+
+        document.getElementById('totalStd').textContent = `${totalStandardMinutes} min`;
+        document.getElementById('totalAct').textContent = `${totalActualMinutes} min`;
+        document.getElementById('idleRes').textContent = `${idleTime > 0 ? idleTime : 0} min`;
+    }
+
+    function resetCalc() {
+        shifts = [];
+        document.getElementById('shiftDisplay').innerHTML = "ඇතුළත් කළ කාල පරාසයන් මෙහි පෙන්වයි...";
+        document.getElementById('bsInput').value = '';
+        document.getElementById('accInput').value = '';
+        document.getElementById('ictInput').value = '';
+        document.getElementById('resBS').textContent = 'පැය 0 විනාඩි 0';
+        document.getElementById('resAcc').textContent = 'පැය 0 විනාඩි 0';
+        document.getElementById('resICT').textContent = 'පැය 0 විනාඩි 0';
+        document.getElementById('totalStd').textContent = '0';
+        document.getElementById('totalAct').textContent = '0';
+        document.getElementById('idleRes').textContent = '0';
+    }
+</script>
+</body>
+</html>
         <div id="logs" style="margin-top: 25px;">
             <div id="sessionHeader" style="font-weight: bold; margin-bottom: 10px; color: #b2bec3; display:none; text-align: center; font-size: 12px;">අවසන් කළ පාඩම් සාරාංශය</div>
         </div>
